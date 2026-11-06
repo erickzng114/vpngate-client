@@ -7,6 +7,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -43,6 +45,8 @@ class MainActivity : AppCompatActivity() {
     private var waiter: CompletableDeferred<Boolean>? = null
     private var readyAction: (() -> Unit)? = null
     private var currentName: String = ""
+    private var countryFilter: String = ""
+    private var countryCodes: List<String> = listOf("")
 
     private val apiPermLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
@@ -86,10 +90,9 @@ class MainActivity : AppCompatActivity() {
         b.cbShowAll.setOnCheckedChangeListener { _, _ -> render() }
 
         val cached = repo.loadCached()
-        if (cached.isNotEmpty()) {
-            all = cached
-            render()
-        }
+        if (cached.isNotEmpty()) all = cached
+        setupFilters()
+        render()
         refresh()
     }
 
@@ -105,6 +108,7 @@ class MainActivity : AppCompatActivity() {
         all.forEach { it.quality = Ranker.score(it) }
         return all
             .filter { b.cbShowAll.isChecked || it.probe != Server.UNREACHABLE }
+            .filter { passesFilter(it) }
             .sortedWith(
                 compareByDescending<Server> { probeRank(it.probe) }
                     .thenByDescending { it.quality }
@@ -117,6 +121,62 @@ class MainActivity : AppCompatActivity() {
         Server.REACHABLE -> 2
         Server.UNTESTED -> 1
         else -> 0
+    }
+
+    // ───────────────────────── فیلتر ─────────────────────────
+
+    private fun passesFilter(s: Server): Boolean {
+        val okStatus = when (b.cgStatus.checkedChipId) {
+            R.id.chipResponsive -> s.probe == Server.VERIFIED || s.probe == Server.REACHABLE
+            R.id.chipVerified -> s.probe == Server.VERIFIED
+            R.id.chipTcp -> s.proto == "tcp"
+            R.id.chipUdp -> s.proto == "udp"
+            else -> true
+        }
+        val okCountry = countryFilter.isEmpty() || s.countryCode.equals(countryFilter, ignoreCase = true)
+        return okStatus && okCountry
+    }
+
+    private fun setupFilters() {
+        b.cgStatus.setOnCheckedStateChangeListener { _, _ -> render() }
+        b.spCountry.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                val code = countryCodes.getOrNull(pos) ?: ""
+                if (code != countryFilter) {
+                    countryFilter = code
+                    render()
+                }
+            }
+
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+        updateCountries()
+    }
+
+    /** لیست کشورها را با تعداد سرورهای هر کشور می‌سازد */
+    private fun updateCountries() {
+        val groups = all.groupBy { it.countryCode.uppercase() }
+            .toList()
+            .sortedByDescending { it.second.size }
+        val codes = ArrayList<String>()
+        val labels = ArrayList<String>()
+        codes.add("")
+        labels.add("🌐 همه‌ی کشورها (${all.size})")
+        for ((code, list) in groups) {
+            codes.add(code)
+            labels.add("${flagEmoji(code)} ${list.first().countryName} (${list.size})")
+        }
+        countryCodes = codes
+        val a = ArrayAdapter(this, android.R.layout.simple_spinner_item, labels)
+        a.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        b.spCountry.adapter = a
+        val idx = codes.indexOf(countryFilter)
+        if (idx >= 0) {
+            b.spCountry.setSelection(idx, false)
+        } else {
+            countryFilter = ""
+            b.spCountry.setSelection(0, false)
+        }
     }
 
     private fun render() {
@@ -143,6 +203,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             all = res.servers
+            updateCountries()
             render()
             probeAll(res.label)
         }
@@ -196,6 +257,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         all = servers
+        updateCountries()
         render()
         refreshJob?.cancel()
         refreshJob = scope.launch { probeAll("کلیپ‌بورد") }
@@ -279,7 +341,7 @@ class MainActivity : AppCompatActivity() {
     private fun connectBest() {
         val list = ranked().filter { it.probe != Server.UNREACHABLE }.take(8)
         if (list.isEmpty()) {
-            toast("اول لیست سرورها را دریافت کنید")
+            toast(if (all.isEmpty()) "اول لیست سرورها را دریافت کنید" else "با این فیلتر سروری نیست")
             return
         }
         autoJob?.cancel()

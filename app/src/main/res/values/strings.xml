@@ -7,5 +7,10 @@
     <string name="refresh">به‌روزرسانی</string>
     <string name="from_clipboard">از کلیپ‌بورد</string>
     <string name="custom_source">منبع دلخواه</string>
+    <string name="f_all">همه</string>
+    <string name="f_responsive">فقط پاسخ‌گوها</string>
+    <string name="f_verified">فقط تأییدشده</string>
+    <string name="f_tcp">فقط TCP</string>
+    <string name="f_udp">فقط UDP</string>
     <string name="show_all">نمایش سرورهای بسته هم</string>
 </resources>
