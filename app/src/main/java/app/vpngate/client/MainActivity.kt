@@ -105,7 +105,18 @@ class MainActivity : AppCompatActivity() {
         all.forEach { it.quality = Ranker.score(it) }
         return all
             .filter { b.cbShowAll.isChecked || it.probe != Server.UNREACHABLE }
-            .sortedByDescending { it.quality }
+            .sortedWith(
+                compareByDescending<Server> { probeRank(it.probe) }
+                    .thenByDescending { it.quality }
+            )
+    }
+
+    /** اول تأییدشده، بعد پاسخ‌گو، بعد تست‌نشده، آخر بسته */
+    private fun probeRank(p: Int): Int = when (p) {
+        Server.VERIFIED -> 3
+        Server.REACHABLE -> 2
+        Server.UNTESTED -> 1
+        else -> 0
     }
 
     private fun render() {
