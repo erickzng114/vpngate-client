@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VPN Gate</string>
+    <string name="status_idle">قطع</string>
+    <string name="connect_best">اتصال خودکار به بهترین</string>
+    <string name="disconnect">قطع</string>
+    <string name="refresh">به‌روزرسانی</string>
+    <string name="from_clipboard">از کلیپ‌بورد</string>
+    <string name="custom_source">منبع دلخواه</string>
+    <string name="show_all">نمایش سرورهای بسته هم</string>
+</resources>

@@ -1,0 +1,28 @@
+name: Update server list cache
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download VPN Gate list
+        run: |
+          curl -fsSL --retry 3 -m 60 -A "Mozilla/5.0" https://www.vpngate.net/api/iphone/ -o vpngate.csv
+          grep -q "vpn_servers" vpngate.csv
+
+      - name: Push to servers-cache branch
+        run: |
+          mkdir out && mv vpngate.csv out/ && cd out
+          git init -q -b servers-cache
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add vpngate.csv
+          git commit -qm "update server list"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" servers-cache
